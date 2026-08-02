@@ -4,6 +4,7 @@ import com.example.catalogueservice.entity.Brand;
 import com.example.catalogueservice.entity.Category;
 import com.example.catalogueservice.entity.OutboxEvent;
 import com.example.catalogueservice.entity.Part;
+import com.example.catalogueservice.exception.ResourceNotFoundException;
 import com.example.catalogueservice.repository.BrandRepository;
 import com.example.catalogueservice.repository.CategoryRepository;
 import com.example.catalogueservice.repository.OutboxRepository;
@@ -55,7 +56,7 @@ public class CatalogueService {
 
     @Transactional(readOnly = true)
     public Part findPartById(UUID id){
-        return partRepository.findById(id).orElseThrow(()-> new RuntimeException("Part not found"));
+        return partRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Part not found with id: " + id));
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +106,7 @@ public class CatalogueService {
     @Transactional
     public void deletePart(UUID id) {
         if (!partRepository.existsById(id)) {
-            throw new RuntimeException("Part not found with id: " + id);
+            throw new ResourceNotFoundException("Part not found with id: " + id);
         }
         partRepository.deleteById(id);
 
@@ -135,13 +136,12 @@ public class CatalogueService {
     @Transactional(readOnly = true)
     public Brand getBrandById(UUID id) {
         return brandRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Brand not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + id));
     }
 
     @Transactional
     public Brand updateBrand(UUID id, Brand brandDetails) {
         Brand brand = getBrandById(id);
-        // Assuming Brand has a setName method or similar mutator
         Brand updatedBrand = new Brand(brand.getId(), brandDetails.getName());
         return brandRepository.save(updatedBrand);
     }
@@ -149,7 +149,7 @@ public class CatalogueService {
     @Transactional
     public void deleteBrand(UUID id) {
         if (!brandRepository.existsById(id)) {
-            throw new RuntimeException("Brand not found with id: " + id);
+            throw new ResourceNotFoundException("Brand not found with id: " + id);
         }
         brandRepository.deleteById(id);
     }
@@ -169,7 +169,7 @@ public class CatalogueService {
     @Transactional(readOnly = true)
     public Category getCategoryById(UUID id) {
         return categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
     }
 
     @Transactional
@@ -181,7 +181,7 @@ public class CatalogueService {
     @Transactional
     public void deleteCategory(UUID id) {
         if (!categoryRepository.existsById(id)) {
-            throw new RuntimeException("Category not found with id: " + id);
+            throw new ResourceNotFoundException("Category not found with id: " + id);
         }
         categoryRepository.deleteById(id);
     }
