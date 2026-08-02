@@ -1,5 +1,7 @@
 package com.example.catalogueservice.service;
 
+import com.example.catalogueservice.dto.PartRequestDto;
+import com.example.catalogueservice.dto.PartResponseDto;
 import com.example.catalogueservice.entity.Brand;
 import com.example.catalogueservice.entity.Category;
 import com.example.catalogueservice.entity.OutboxEvent;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,20 +28,9 @@ public class CatalogueService {
     private final BrandRepository brandRepository;
 
     @Transactional
-    public Part addPart(Part part) {
-        UUID partId = part.getId() != null ? part.getId() : UUID.randomUUID();
-
-        Part partToSave = new Part(
-                partId,
-                part.getSku(),
-                part.getName(),
-                part.getBrand(),
-                part.getCategory(),
-                part.getPrice(),
-                part.getStatus(),
-                part.getVehicleFitments(),
-                part.getImages()
-        );
+    public PartResponseDto addPart(PartRequestDto requestDto) {
+        UUID partId = UUID.randomUUID();
+        Part partToSave = toEntity(requestDto, partId);
 
         Part savedPart = partRepository.save(partToSave);
 
@@ -51,43 +43,44 @@ public class CatalogueService {
                 Instant.now()
         );
         outboxRepository.save(event);
-        return savedPart;
+        return toDto(savedPart);
     }
 
     @Transactional(readOnly = true)
-    public Part findPartById(UUID id){
-        return partRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Part not found with id: " + id));
+    public PartResponseDto findPartById(UUID id) {
+        Part part = partRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Part not found with id: " + id));
+        return toDto(part);
     }
 
     @Transactional(readOnly = true)
-    public List<Part> findPartsByVehicle(String make, String model, int year) {
-        return partRepository.findByVehicleFitment(make, model, year);
+    public List<PartResponseDto> findPartsByVehicle(String make, String model, int year) {
+        return partRepository.findByVehicleFitment(make, model, year).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
+
     @Transactional(readOnly = true)
-    public List<Part> searchParts(String keyword) {
-        return partRepository.searchParts(keyword);
+    public List<PartResponseDto> searchParts(String keyword) {
+        return partRepository.searchParts(keyword).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
+
     @Transactional(readOnly = true)
-    public List<Part> getAllParts() {
-        return partRepository.findAll();
+    public List<PartResponseDto> getAllParts() {
+        return partRepository.findAll().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional
-    public Part updatePart(UUID id, Part partDetails) {
-        Part existingPart = findPartById(id);
+    public PartResponseDto updatePart(UUID id, PartRequestDto requestDto) {
+        if (!partRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Part not found with id: " + id);
+        }
 
-        Part updatedPart = new Part(
-                existingPart.getId(),
-                partDetails.getSku(),
-                partDetails.getName(),
-                partDetails.getBrand(),
-                partDetails.getCategory(),
-                partDetails.getPrice(),
-                partDetails.getStatus(),
-                partDetails.getVehicleFitments(),
-                partDetails.getImages()
-        );
-
+        Part updatedPart = toEntity(requestDto, id);
         Part savedPart = partRepository.save(updatedPart);
 
         OutboxEvent event = new OutboxEvent(
@@ -100,7 +93,7 @@ public class CatalogueService {
         );
         outboxRepository.save(event);
 
-        return savedPart;
+        return toDto(savedPart);
     }
 
     @Transactional
@@ -178,11 +171,49 @@ public class CatalogueService {
         Category updatedCategory = new Category(category.getId(), categoryDetails.getName(), categoryDetails.getParentId());
         return categoryRepository.save(updatedCategory);
     }
+
     @Transactional
     public void deleteCategory(UUID id) {
         if (!categoryRepository.existsById(id)) {
             throw new ResourceNotFoundException("Category not found with id: " + id);
         }
         categoryRepository.deleteById(id);
+    }
+
+    // --- Private Mapping Helper Methods ---
+
+    private Part toEntity(PartRequestDto dto, UUID id) {
+        Brand brand = brandRepository.findById(dto.brandId())
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + dto.brandId()));
+        Category category = categoryRepository.findById(dto.categoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + dto.categoryId()));
+
+        return new Part(
+                id,
+                dto.sku(),
+                dto.name(),
+                brand,
+                category,
+                dto.price(),
+                dto.status(),
+                dto.vehicleFitments(),
+                dto.images()
+        );
+    }
+
+    private PartResponseDto toDto(Part part) {
+        return new PartResponseDto(
+                part.getId(),
+                part.getSku(),
+                part.getName(),
+                part.getBrand() != null ? part.getBrand().getId() : null,
+                part.getBrand() != null ? part.getBrand().getName() : null,
+                part.getCategory() != null ? part.getCategory().getId() : null,
+                part.getCategory() != null ? part.getCategory().getName() : null,
+                part.getPrice(),
+                part.getStatus(),
+                part.getVehicleFitments(),
+                part.getImages()
+        );
     }
 }

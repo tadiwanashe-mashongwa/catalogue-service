@@ -1,6 +1,9 @@
 package com.example.catalogueservice.service;
 
+import com.example.catalogueservice.dto.PartRequestDto;
+import com.example.catalogueservice.dto.PartResponseDto;
 import com.example.catalogueservice.entity.*;
+import com.example.catalogueservice.exception.ResourceNotFoundException;
 import com.example.catalogueservice.repository.BrandRepository;
 import com.example.catalogueservice.repository.CategoryRepository;
 import com.example.catalogueservice.repository.OutboxRepository;
@@ -10,13 +13,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import static org.mockito.ArgumentMatchers.any;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,29 +32,40 @@ class CatalogueServiceTest {
     @Mock
     private OutboxRepository outboxRepository;
 
-    @InjectMocks
-    private CatalogueService catalogueService;
     @Mock
     private BrandRepository brandRepository;
 
     @Mock
     private CategoryRepository categoryRepository;
 
+    @InjectMocks
+    private CatalogueService catalogueService;
+
     @Test
     void shouldSavePartAndWriteToOutbox() {
-        UUID partId = UUID.randomUUID();
-        Brand brand = new Brand(UUID.randomUUID(), "Toyota");
-        Category category = new Category(UUID.randomUUID(), "Brakes", null);
+        UUID brandId = UUID.randomUUID();
+        UUID catId = UUID.randomUUID();
+        Brand brand = new Brand(brandId, "Toyota");
+        Category category = new Category(catId, "Brakes", null);
         Money price = new Money(15000L, Currency.USD);
 
-        Part part = new Part(partId, "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null);
+        PartRequestDto requestDto = new PartRequestDto(
+                "SKU-123", "Brake Pad", brandId, catId, price, PartStatus.ACTIVE, null, null
+        );
+        Part savedPart = new Part(
+                UUID.randomUUID(), "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null
+        );
 
-        when(partRepository.save(any(Part.class))).thenReturn(part);
+        when(brandRepository.findById(brandId)).thenReturn(Optional.of(brand));
+        when(categoryRepository.findById(catId)).thenReturn(Optional.of(category));
+        when(partRepository.save(any(Part.class))).thenReturn(savedPart);
 
-        Part savedPart = catalogueService.addPart(part);
+        PartResponseDto responseDto = catalogueService.addPart(requestDto);
 
-        assertThat(savedPart).isNotNull();
-        assertThat(savedPart.getId()).isEqualTo(partId);
+        assertThat(responseDto).isNotNull();
+        assertThat(responseDto.sku()).isEqualTo("SKU-123");
+        verify(brandRepository).findById(brandId);
+        verify(categoryRepository).findById(catId);
         verify(partRepository).save(any(Part.class));
         verify(outboxRepository).save(any(OutboxEvent.class));
     }
@@ -65,64 +80,94 @@ class CatalogueServiceTest {
         Part part = new Part(partId, "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null);
 
         when(partRepository.findById(partId)).thenReturn(Optional.of(part));
-        Part retrievedPart = catalogueService.findPartById(partId);
+        PartResponseDto responseDto = catalogueService.findPartById(partId);
 
-        assertThat(retrievedPart).isNotNull();
-        assertThat(retrievedPart.getId()).isEqualTo(partId);
-        assertThat(retrievedPart.getSku()).isEqualTo("SKU-123");
+        assertThat(responseDto).isNotNull();
+        assertThat(responseDto.id()).isEqualTo(partId);
+        assertThat(responseDto.sku()).isEqualTo("SKU-123");
         verify(partRepository, times(1)).findById(partId);
     }
+
     @Test
     void shouldReturnPartsForGivenVehicle() {
         String make = "Toyota";
         String model = "Hilux";
         int year = 2008;
-        List<Part> expectedParts = List.of(new Part());
+        Brand brand = new Brand(UUID.randomUUID(), "Toyota");
+        Category category = new Category(UUID.randomUUID(), "Brakes", null);
+        Money price = new Money(15000L, Currency.USD);
+        Part part = new Part(UUID.randomUUID(), "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null);
+        List<Part> expectedParts = List.of(part);
 
         when(partRepository.findByVehicleFitment(make, model, year)).thenReturn(expectedParts);
 
-        List<Part> actualParts = catalogueService.findPartsByVehicle(make, model, year);
+        List<PartResponseDto> actualParts = catalogueService.findPartsByVehicle(make, model, year);
 
-        assertThat(actualParts).isEqualTo(expectedParts);
+        assertThat(actualParts).hasSize(1);
+        assertThat(actualParts.get(0).sku()).isEqualTo("SKU-123");
         verify(partRepository, times(1)).findByVehicleFitment(make, model, year);
     }
+
     @Test
     void shouldReturnPartsForKeywordSearch() {
         String keyword = "brakes";
-        List<Part> expectedParts = List.of(new Part());
+        Brand brand = new Brand(UUID.randomUUID(), "Toyota");
+        Category category = new Category(UUID.randomUUID(), "Brakes", null);
+        Money price = new Money(15000L, Currency.USD);
+        Part part = new Part(UUID.randomUUID(), "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null);
+        List<Part> expectedParts = List.of(part);
 
         when(partRepository.searchParts(keyword)).thenReturn(expectedParts);
 
-        List<Part> actualParts = catalogueService.searchParts(keyword);
+        List<PartResponseDto> actualParts = catalogueService.searchParts(keyword);
 
-        assertThat(actualParts).isEqualTo(expectedParts);
+        assertThat(actualParts).hasSize(1);
         verify(partRepository, times(1)).searchParts(keyword);
     }
+
     @Test
     void shouldGetAllParts() {
-        List<Part> expectedParts = List.of(new Part());
+        Brand brand = new Brand(UUID.randomUUID(), "Toyota");
+        Category category = new Category(UUID.randomUUID(), "Brakes", null);
+        Money price = new Money(15000L, Currency.USD);
+        Part part = new Part(UUID.randomUUID(), "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null);
+        List<Part> expectedParts = List.of(part);
+
         when(partRepository.findAll()).thenReturn(expectedParts);
 
-        List<Part> actualParts = catalogueService.getAllParts();
+        List<PartResponseDto> actualParts = catalogueService.getAllParts();
 
-        assertThat(actualParts).isEqualTo(expectedParts);
+        assertThat(actualParts).hasSize(1);
         verify(partRepository, times(1)).findAll();
     }
 
     @Test
     void shouldUpdatePart() {
         UUID id = UUID.randomUUID();
-        Part existingPart = new Part(id, "SKU-OLD", "Old Name", null, null, null, null, null, null);
-        Part details = new Part(null, "SKU-NEW", "New Name", null, null, null, null, null, null);
+        UUID brandId = UUID.randomUUID();
+        UUID catId = UUID.randomUUID();
+        Brand brand = new Brand(brandId, "Toyota");
+        Category category = new Category(catId, "Brakes", null);
+        Money price = new Money(15000L, Currency.USD);
 
-        when(partRepository.findById(id)).thenReturn(Optional.of(existingPart));
-        when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        PartRequestDto details = new PartRequestDto(
+                "SKU-NEW", "New Name", brandId, catId, price, PartStatus.ACTIVE, null, null
+        );
+        Part savedPart = new Part(
+                id, "SKU-NEW", "New Name", brand, category, price, PartStatus.ACTIVE, null, null
+        );
+
+        when(partRepository.existsById(id)).thenReturn(true);
+        when(brandRepository.findById(brandId)).thenReturn(Optional.of(brand));
+        when(categoryRepository.findById(catId)).thenReturn(Optional.of(category));
+        when(partRepository.save(any(Part.class))).thenReturn(savedPart);
         when(outboxRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Part updated = catalogueService.updatePart(id, details);
+        PartResponseDto updated = catalogueService.updatePart(id, details);
 
-        assertThat(updated.getSku()).isEqualTo("SKU-NEW");
-        assertThat(updated.getName()).isEqualTo("New Name");
+        assertThat(updated.sku()).isEqualTo("SKU-NEW");
+        assertThat(updated.name()).isEqualTo("New Name");
+        verify(partRepository, times(1)).existsById(id);
         verify(partRepository, times(1)).save(any(Part.class));
         verify(outboxRepository, times(1)).save(any(OutboxEvent.class));
     }
@@ -139,7 +184,6 @@ class CatalogueServiceTest {
         verify(partRepository, times(1)).deleteById(id);
         verify(outboxRepository, times(1)).save(any(OutboxEvent.class));
     }
-
 
     @Test
     void shouldCreateBrand() {
@@ -169,7 +213,7 @@ class CatalogueServiceTest {
         when(brandRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> catalogueService.getBrandById(id))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Brand not found");
     }
 
@@ -226,7 +270,7 @@ class CatalogueServiceTest {
         when(categoryRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> catalogueService.getCategoryById(id))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Category not found");
     }
 
@@ -254,5 +298,4 @@ class CatalogueServiceTest {
 
         verify(categoryRepository, times(1)).deleteById(id);
     }
-
 }
