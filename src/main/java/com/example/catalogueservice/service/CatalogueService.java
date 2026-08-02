@@ -116,8 +116,10 @@ public class CatalogueService {
 
     // --- Brand CRUD ---
 
-    @Transactional
     public Brand createBrand(Brand brand) {
+        if (brand.getId() == null) {
+            brand.setId(UUID.randomUUID());
+        }
         return brandRepository.save(brand);
     }
 
@@ -151,6 +153,9 @@ public class CatalogueService {
 
     @Transactional
     public Category createCategory(Category category) {
+        if(category.getId()==null){
+            category.setId(UUID.randomUUID());
+        }
         return categoryRepository.save(category);
     }
 

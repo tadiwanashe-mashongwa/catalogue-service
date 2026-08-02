@@ -35,9 +35,9 @@ class GlobalExceptionHandlerTest {
     void shouldHandleResourceNotFoundException() throws Exception {
         mockMvc.perform(get("/test-not-found"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Test resource missing"))
+                .andExpect(jsonPath("$.data").isEmpty())
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 }
