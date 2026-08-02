@@ -6,7 +6,6 @@ import com.example.catalogueservice.entity.*;
 import com.example.catalogueservice.exception.ResourceNotFoundException;
 import com.example.catalogueservice.repository.BrandRepository;
 import com.example.catalogueservice.repository.CategoryRepository;
-import com.example.catalogueservice.repository.OutboxRepository;
 import com.example.catalogueservice.repository.PartRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +20,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,7 +31,7 @@ class CatalogueServiceTest {
     private PartRepository partRepository;
 
     @Mock
-    private OutboxRepository outboxRepository;
+    private OutboxService outboxService;
 
     @Mock
     private BrandRepository brandRepository;
@@ -67,7 +68,7 @@ class CatalogueServiceTest {
         verify(brandRepository).findById(brandId);
         verify(categoryRepository).findById(catId);
         verify(partRepository).save(any(Part.class));
-        verify(outboxRepository).save(any(OutboxEvent.class));
+        verify(outboxService).saveEvent(eq("PART"), anyString(), eq("PartListed"), any());
     }
 
     @Test
@@ -161,7 +162,6 @@ class CatalogueServiceTest {
         when(brandRepository.findById(brandId)).thenReturn(Optional.of(brand));
         when(categoryRepository.findById(catId)).thenReturn(Optional.of(category));
         when(partRepository.save(any(Part.class))).thenReturn(savedPart);
-        when(outboxRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PartResponseDto updated = catalogueService.updatePart(id, details);
 
@@ -169,7 +169,7 @@ class CatalogueServiceTest {
         assertThat(updated.name()).isEqualTo("New Name");
         verify(partRepository, times(1)).existsById(id);
         verify(partRepository, times(1)).save(any(Part.class));
-        verify(outboxRepository, times(1)).save(any(OutboxEvent.class));
+        verify(outboxService, times(1)).saveEvent(eq("PART"), anyString(), eq("PartUpdated"), any());
     }
 
     @Test
@@ -177,12 +177,11 @@ class CatalogueServiceTest {
         UUID id = UUID.randomUUID();
         when(partRepository.existsById(id)).thenReturn(true);
         doNothing().when(partRepository).deleteById(id);
-        when(outboxRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         catalogueService.deletePart(id);
 
         verify(partRepository, times(1)).deleteById(id);
-        verify(outboxRepository, times(1)).save(any(OutboxEvent.class));
+        verify(outboxService, times(1)).saveEvent(eq("PART"), anyString(), eq("PartDeleted"), any());
     }
 
     @Test

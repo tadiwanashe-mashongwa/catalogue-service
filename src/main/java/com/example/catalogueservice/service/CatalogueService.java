@@ -4,17 +4,15 @@ import com.example.catalogueservice.dto.PartRequestDto;
 import com.example.catalogueservice.dto.PartResponseDto;
 import com.example.catalogueservice.entity.Brand;
 import com.example.catalogueservice.entity.Category;
-import com.example.catalogueservice.entity.OutboxEvent;
 import com.example.catalogueservice.entity.Part;
 import com.example.catalogueservice.exception.ResourceNotFoundException;
 import com.example.catalogueservice.repository.BrandRepository;
 import com.example.catalogueservice.repository.CategoryRepository;
-import com.example.catalogueservice.repository.OutboxRepository;
 import com.example.catalogueservice.repository.PartRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.Instant;
+
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,7 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CatalogueService {
     private final PartRepository partRepository;
-    private final OutboxRepository outboxRepository;
+    private final OutboxService outboxService;
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
 
@@ -33,17 +31,10 @@ public class CatalogueService {
         Part partToSave = toEntity(requestDto, partId);
 
         Part savedPart = partRepository.save(partToSave);
+        PartResponseDto responseDto = toDto(savedPart);
 
-        OutboxEvent event = new OutboxEvent(
-                UUID.randomUUID(),
-                "PART",
-                savedPart.getId(),
-                "PartListed",
-                "{\"partId\":\"" + savedPart.getId() + "\"}",
-                Instant.now()
-        );
-        outboxRepository.save(event);
-        return toDto(savedPart);
+        outboxService.saveEvent("PART", savedPart.getId().toString(), "PartListed", responseDto);
+        return responseDto;
     }
 
     @Transactional(readOnly = true)
@@ -82,18 +73,11 @@ public class CatalogueService {
 
         Part updatedPart = toEntity(requestDto, id);
         Part savedPart = partRepository.save(updatedPart);
+        PartResponseDto responseDto = toDto(savedPart);
 
-        OutboxEvent event = new OutboxEvent(
-                UUID.randomUUID(),
-                "PART",
-                savedPart.getId(),
-                "PartUpdated",
-                "{\"partId\":\"" + savedPart.getId() + "\"}",
-                Instant.now()
-        );
-        outboxRepository.save(event);
+        outboxService.saveEvent("PART", savedPart.getId().toString(), "PartUpdated", responseDto);
 
-        return toDto(savedPart);
+        return responseDto;
     }
 
     @Transactional
@@ -103,15 +87,7 @@ public class CatalogueService {
         }
         partRepository.deleteById(id);
 
-        OutboxEvent event = new OutboxEvent(
-                UUID.randomUUID(),
-                "PART",
-                id,
-                "PartDeleted",
-                "{\"partId\":\"" + id + "\"}",
-                Instant.now()
-        );
-        outboxRepository.save(event);
+        outboxService.saveEvent("PART", id.toString(), "PartDeleted", id);
     }
 
     // --- Brand CRUD ---
