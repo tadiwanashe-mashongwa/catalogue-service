@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -44,5 +45,19 @@ public class CatalogueService {
         );
         outboxRepository.save(event);
         return savedPart;
+    }
+
+    @Transactional(readOnly = true)
+    public Part findPartById(UUID id){
+        return partRepository.findById(id).orElseThrow(()-> new RuntimeException("Part not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Part> findPartsByVehicle(String make, String model, int year) {
+        return partRepository.findByVehicleFitment(make, model, year);
+    }
+    @Transactional(readOnly = true)
+    public List<Part> searchParts(String keyword) {
+        return partRepository.searchParts(keyword);
     }
 }
