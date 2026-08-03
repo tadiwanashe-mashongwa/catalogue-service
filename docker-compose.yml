@@ -4,9 +4,9 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: sparelink
-      POSTGRES_PASSWORD: cashmoney
-      POSTGRES_DB: catalogue_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: sparelink_catalogue
     ports:
       - "5432:5432"
 
@@ -27,9 +27,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/catalogue_db
-      - SPRING_DATASOURCE_USERNAME=sparelink
-      - SPRING_DATASOURCE_PASSWORD=cashmoney
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/sparelink_catalogue
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=mysecretpassword
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       - postgres
