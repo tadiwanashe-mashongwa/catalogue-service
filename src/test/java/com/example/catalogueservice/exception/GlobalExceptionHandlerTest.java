@@ -1,5 +1,7 @@
 package com.example.catalogueservice.exception;
 
+import com.example.catalogueservice.dto.PartRequestDto;
+import jakarta.validation.Valid;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,6 +36,10 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping("/test-malformed-json")
         public void throwMalformedJson(@RequestBody Object payload) {
+        }
+
+        @PostMapping("/test-validation")
+        public void throwValidation(@RequestBody @Valid PartRequestDto payload) {
         }
     }
 
@@ -73,6 +79,18 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Malformed JSON request payload."))
+                .andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void shouldHandleMethodArgumentNotValidException() throws Exception {
+        mockMvc.perform(post("/test-validation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.data").isEmpty())
                 .andExpect(jsonPath("$.timestamp").exists());
     }

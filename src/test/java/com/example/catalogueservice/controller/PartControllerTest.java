@@ -5,6 +5,7 @@ import com.example.catalogueservice.dto.PartResponseDto;
 import com.example.catalogueservice.entity.Currency;
 import com.example.catalogueservice.entity.Money;
 import com.example.catalogueservice.entity.PartStatus;
+import com.example.catalogueservice.exception.ResourceNotFoundException;
 import com.example.catalogueservice.service.CatalogueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -118,5 +119,23 @@ class PartControllerTest {
 
         mockMvc.perform(delete("/api/parts/{id}", id))
                 .andExpect(status().isOk());
+    }
+    @Test
+    void shouldReturnNotFoundWhenPartDoesNotExist() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(catalogueService.findPartById(id)).thenThrow(new ResourceNotFoundException("Part not found"));
+
+        mockMvc.perform(get("/api/parts/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Part not found"));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenCreatingPartWithInvalidPayload() throws Exception {
+        mockMvc.perform(post("/api/parts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 }

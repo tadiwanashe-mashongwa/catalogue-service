@@ -4,6 +4,7 @@ import com.example.catalogueservice.dto.ApiResponse;
 import com.example.catalogueservice.dto.PartRequestDto;
 import com.example.catalogueservice.dto.PartResponseDto;
 import com.example.catalogueservice.service.CatalogueService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class PartController {
     private final CatalogueService catalogueService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<PartResponseDto>> createPart(@RequestBody PartRequestDto requestDto) {
+    public ResponseEntity<ApiResponse<PartResponseDto>> createPart(@RequestBody @Valid PartRequestDto requestDto) {
         PartResponseDto created = catalogueService.addPart(requestDto);
         return new ResponseEntity<>(ApiResponse.success("Part created successfully", created), HttpStatus.CREATED);
     }
