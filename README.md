@@ -1,7 +1,7 @@
 # SpareLink Catalogue Service
 
 [![CI](https://github.com/tadiwanashe-mashongwa/catalogue-service/actions/workflows/ci.yml/badge.svg)](https://github.com/tadiwanashe-mashongwa/catalogue-service/actions/workflows/ci.yml)
-![JaCoCo coverage](https://raw.githubusercontent.com/tadiwanashe-mashongwa/catalogue-service/main/.github/badges/jacoco.svg)
+![JaCoCo coverage](./.github/badges/jacoco.svg)
 ![Java](https://img.shields.io/badge/Java-17-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.0-brightgreen)
 
