@@ -1,6 +1,9 @@
 package com.example.catalogueservice.repository;
 
 import com.example.catalogueservice.entity.Part;
+import com.example.catalogueservice.entity.PartStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,4 +20,17 @@ public interface PartRepository extends JpaRepository<Part, UUID> {
 
     @Query("SELECT p FROM Part p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Part> searchParts(@Param("keyword") String keyword);
+
+    @Query("""
+            SELECT p FROM Part p
+            WHERE (:status IS NULL OR p.status = :status)
+              AND (:keyword IS NULL
+                   OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            """)
+    Page<Part> findByStatusAndKeyword(
+            @Param("status") PartStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 }

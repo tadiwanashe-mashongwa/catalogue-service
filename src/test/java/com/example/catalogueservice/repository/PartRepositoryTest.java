@@ -17,6 +17,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop"
@@ -127,5 +129,27 @@ class PartRepositoryTest {
         assertThat(reloadedPart.getVehicleFitments().get(0).getYearFrom()).isEqualTo(2012);
         assertThat(reloadedPart.getImages()).hasSize(1);
         assertThat(reloadedPart.getImages().get(0).getUrl()).isEqualTo("https://example.com/updated.jpg");
+    }
+
+    @Test
+    void shouldFilterPartsByStatusAndKeywordUsingPagination() {
+        Brand brand = entityManager.persist(new Brand(UUID.randomUUID(), "Toyota"));
+        Category category = entityManager.persist(new Category(UUID.randomUUID(), "Brakes", null));
+        Money price = new Money(15000L, Currency.USD);
+        partRepository.saveAndFlush(new Part(UUID.randomUUID(), "SKU-BRAKE-1", "Front Brake Pad", brand, category, price,
+                PartStatus.ACTIVE, List.of(), List.of()));
+        partRepository.saveAndFlush(new Part(UUID.randomUUID(), "SKU-BRAKE-2", "Rear Brake Pad", brand, category, price,
+                PartStatus.ACTIVE, List.of(), List.of()));
+        partRepository.saveAndFlush(new Part(UUID.randomUUID(), "SKU-OIL-1", "Engine Oil", brand, category, price,
+                PartStatus.DISCONTINUED, List.of(), List.of()));
+
+        Page<Part> result = partRepository.findByStatusAndKeyword(
+                PartStatus.ACTIVE, "brake", PageRequest.of(0, 1)
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.getContent().get(0).getName()).contains("Brake");
     }
 }

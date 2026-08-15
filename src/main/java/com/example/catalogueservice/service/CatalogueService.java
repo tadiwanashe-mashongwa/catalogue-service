@@ -2,9 +2,11 @@ package com.example.catalogueservice.service;
 
 import com.example.catalogueservice.dto.PartRequestDto;
 import com.example.catalogueservice.dto.PartResponseDto;
+import com.example.catalogueservice.dto.PagedResponse;
 import com.example.catalogueservice.entity.Brand;
 import com.example.catalogueservice.entity.Category;
 import com.example.catalogueservice.entity.Part;
+import com.example.catalogueservice.entity.PartStatus;
 import com.example.catalogueservice.exception.ResourceNotFoundException;
 import com.example.catalogueservice.exception.StalePartVersionException;
 import com.example.catalogueservice.repository.BrandRepository;
@@ -13,6 +15,8 @@ import com.example.catalogueservice.repository.PartRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.UUID;
@@ -64,6 +68,20 @@ public class CatalogueService {
         return partRepository.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<PartResponseDto> getParts(int page, int size, PartStatus status, String keyword) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Page<Part> parts = partRepository.findByStatusAndKeyword(status, normalizedKeyword, PageRequest.of(page, size));
+
+        return new PagedResponse<>(
+                parts.getContent().stream().map(this::toDto).toList(),
+                parts.getNumber(),
+                parts.getSize(),
+                parts.getTotalElements(),
+                parts.getTotalPages()
+        );
     }
 
     @Transactional

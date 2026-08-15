@@ -2,6 +2,7 @@ package com.example.catalogueservice.controller;
 
 import com.example.catalogueservice.dto.PartRequestDto;
 import com.example.catalogueservice.dto.PartResponseDto;
+import com.example.catalogueservice.dto.PagedResponse;
 import com.example.catalogueservice.entity.Currency;
 import com.example.catalogueservice.entity.Money;
 import com.example.catalogueservice.entity.PartStatus;
@@ -63,11 +64,37 @@ class PartControllerTest {
 
     @Test
     void shouldGetAllParts() throws Exception {
-        when(catalogueService.getAllParts()).thenReturn(List.of());
+        when(catalogueService.getParts(0, 20, null, null))
+                .thenReturn(new PagedResponse<>(List.of(), 0, 20, 0, 0));
 
-        mockMvc.perform(get("/api/parts"))
+        mockMvc.perform(get("/api/parts").param("page", "0").param("size", "20"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    @Test
+    void shouldFilterPaginatedPartsByStatusAndKeyword() throws Exception {
+        when(catalogueService.getParts(1, 5, PartStatus.ACTIVE, "brake"))
+                .thenReturn(new PagedResponse<>(List.of(), 1, 5, 7, 2));
+
+        mockMvc.perform(get("/api/parts")
+                        .param("page", "1")
+                        .param("size", "5")
+                        .param("status", "ACTIVE")
+                        .param("keyword", "brake"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.size").value(5))
+                .andExpect(jsonPath("$.data.totalElements").value(7));
+    }
+
+    @Test
+    void shouldRejectInvalidPageSize() throws Exception {
+        mockMvc.perform(get("/api/parts").param("size", "101"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

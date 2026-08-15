@@ -3,12 +3,17 @@ package com.example.catalogueservice.controller;
 import com.example.catalogueservice.dto.ApiResponse;
 import com.example.catalogueservice.dto.PartRequestDto;
 import com.example.catalogueservice.dto.PartResponseDto;
+import com.example.catalogueservice.dto.PagedResponse;
+import com.example.catalogueservice.entity.PartStatus;
 import com.example.catalogueservice.service.CatalogueService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/parts")
 @RequiredArgsConstructor
+@Validated
 public class PartController {
 
     private final CatalogueService catalogueService;
@@ -27,8 +33,12 @@ public class PartController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PartResponseDto>>> getAllParts() {
-        List<PartResponseDto> parts = catalogueService.getAllParts();
+    public ResponseEntity<ApiResponse<PagedResponse<PartResponseDto>>> getAllParts(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) PartStatus status,
+            @RequestParam(required = false) String keyword) {
+        PagedResponse<PartResponseDto> parts = catalogueService.getParts(page, size, status, keyword);
         return ResponseEntity.ok(ApiResponse.success("Parts retrieved successfully", parts));
     }
 
