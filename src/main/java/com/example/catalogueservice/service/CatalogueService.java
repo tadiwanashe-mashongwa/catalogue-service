@@ -12,6 +12,7 @@ import com.example.catalogueservice.exception.StalePartVersionException;
 import com.example.catalogueservice.repository.BrandRepository;
 import com.example.catalogueservice.repository.CategoryRepository;
 import com.example.catalogueservice.repository.PartRepository;
+import com.example.catalogueservice.repository.PartSpecifications;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,18 +73,16 @@ public class CatalogueService {
 
     @Transactional(readOnly = true)
     public PagedResponse<PartResponseDto> getParts(int page, int size, PartStatus status, String keyword) {
-        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        return getParts(page, size, null, null, status, keyword);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<PartResponseDto> getParts(int page, int size, UUID brandId, UUID categoryId,
+                                                   PartStatus status, String keyword) {
         PageRequest pageable = PageRequest.of(page, size);
-        Page<Part> parts;
-        if (status != null && normalizedKeyword != null) {
-            parts = partRepository.findByStatusAndKeyword(status, normalizedKeyword, pageable);
-        } else if (status != null) {
-            parts = partRepository.findByStatus(status, pageable);
-        } else if (normalizedKeyword != null) {
-            parts = partRepository.searchParts(normalizedKeyword, pageable);
-        } else {
-            parts = partRepository.findAll(pageable);
-        }
+        Page<Part> parts = partRepository.findAll(
+                PartSpecifications.withFilters(brandId, categoryId, status, keyword), pageable
+        );
 
         return new PagedResponse<>(
                 parts.getContent().stream().map(this::toDto).toList(),

@@ -64,7 +64,7 @@ class PartControllerTest {
 
     @Test
     void shouldGetAllParts() throws Exception {
-        when(catalogueService.getParts(0, 20, null, null))
+        when(catalogueService.getParts(0, 20, null, null, null, null))
                 .thenReturn(new PagedResponse<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/api/parts").param("page", "0").param("size", "20"))
@@ -77,7 +77,7 @@ class PartControllerTest {
 
     @Test
     void shouldFilterPaginatedPartsByStatusAndKeyword() throws Exception {
-        when(catalogueService.getParts(1, 5, PartStatus.ACTIVE, "brake"))
+        when(catalogueService.getParts(1, 5, null, null, PartStatus.ACTIVE, "brake"))
                 .thenReturn(new PagedResponse<>(List.of(), 1, 5, 7, 2));
 
         mockMvc.perform(get("/api/parts")
@@ -92,8 +92,28 @@ class PartControllerTest {
     }
 
     @Test
+    void shouldFilterPaginatedPartsByBrandAndCategory() throws Exception {
+        UUID brandId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        when(catalogueService.getParts(0, 20, brandId, categoryId, null, null))
+                .thenReturn(new PagedResponse<>(List.of(), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/parts")
+                        .param("brandId", brandId.toString())
+                        .param("categoryId", categoryId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
     void shouldRejectInvalidPageSize() throws Exception {
         mockMvc.perform(get("/api/parts").param("size", "101"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectInvalidBrandId() throws Exception {
+        mockMvc.perform(get("/api/parts").param("brandId", "not-a-uuid"))
                 .andExpect(status().isBadRequest());
     }
 

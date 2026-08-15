@@ -5,6 +5,7 @@ import com.example.catalogueservice.entity.PartStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface PartRepository extends JpaRepository<Part, UUID> {
+public interface PartRepository extends JpaRepository<Part, UUID>, JpaSpecificationExecutor<Part> {
 
     @Query("SELECT DISTINCT p FROM Part p JOIN p.vehicleFitments f WHERE LOWER(f.make) = LOWER(:make) AND LOWER(f.model) = LOWER(:model) AND :year BETWEEN f.yearFrom AND f.yearTo")
     List<Part> findByVehicleFitment(@Param("make") String make, @Param("model") String model, @Param("year") int year);

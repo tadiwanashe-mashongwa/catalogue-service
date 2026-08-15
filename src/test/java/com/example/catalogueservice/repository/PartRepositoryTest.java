@@ -1,6 +1,7 @@
 package com.example.catalogueservice.repository;
 
 import com.example.catalogueservice.entity.*;
+import com.example.catalogueservice.repository.PartSpecifications;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -151,5 +152,28 @@ class PartRepositoryTest {
         assertThat(result.getTotalElements()).isEqualTo(2);
         assertThat(result.getTotalPages()).isEqualTo(2);
         assertThat(result.getContent().get(0).getName()).contains("Brake");
+    }
+
+    @Test
+    void shouldFilterPartsByBrandAndCategoryUsingPagination() {
+        Brand toyota = entityManager.persist(new Brand(UUID.randomUUID(), "Toyota"));
+        Brand honda = entityManager.persist(new Brand(UUID.randomUUID(), "Honda"));
+        Category brakes = entityManager.persist(new Category(UUID.randomUUID(), "Brakes", null));
+        Category engine = entityManager.persist(new Category(UUID.randomUUID(), "Engine", null));
+        Money price = new Money(15000L, Currency.USD);
+        partRepository.saveAndFlush(new Part(UUID.randomUUID(), "SKU-T-B", "Toyota Brake Pad", toyota, brakes, price,
+                PartStatus.ACTIVE, List.of(), List.of()));
+        partRepository.saveAndFlush(new Part(UUID.randomUUID(), "SKU-T-E", "Toyota Oil Filter", toyota, engine, price,
+                PartStatus.ACTIVE, List.of(), List.of()));
+        partRepository.saveAndFlush(new Part(UUID.randomUUID(), "SKU-H-B", "Honda Brake Pad", honda, brakes, price,
+                PartStatus.ACTIVE, List.of(), List.of()));
+
+        Page<Part> result = partRepository.findAll(
+                PartSpecifications.withFilters(toyota.getId(), brakes.getId(), null, null),
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getSku()).isEqualTo("SKU-T-B");
     }
 }

@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.Optional;
@@ -168,12 +169,13 @@ class CatalogueServiceTest {
                 new Money(15000L, Currency.USD), PartStatus.ACTIVE, null, null);
         PageRequest pageable = PageRequest.of(0, 20);
 
-        when(partRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(part), pageable, 1));
+        when(partRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(part), pageable, 1));
 
         var response = catalogueService.getParts(0, 20, null, null);
 
         assertThat(response.totalElements()).isEqualTo(1);
-        verify(partRepository).findAll(pageable);
+        verify(partRepository).findAll(any(Specification.class), eq(pageable));
         verifyNoMoreInteractions(partRepository);
     }
 

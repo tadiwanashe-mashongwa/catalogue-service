@@ -36,9 +36,11 @@ public class PartController {
     public ResponseEntity<ApiResponse<PagedResponse<PartResponseDto>>> getAllParts(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) UUID brandId,
+            @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) PartStatus status,
             @RequestParam(required = false) String keyword) {
-        PagedResponse<PartResponseDto> parts = catalogueService.getParts(page, size, status, keyword);
+        PagedResponse<PartResponseDto> parts = catalogueService.getParts(page, size, brandId, categoryId, status, keyword);
         return ResponseEntity.ok(ApiResponse.success("Parts retrieved successfully", parts));
     }
 
