@@ -76,7 +76,7 @@ public class CatalogueService {
             );
         }
         part.updateDetails(toEntity(requestDto, id));
-        Part savedPart = partRepository.save(part);
+        Part savedPart = partRepository.saveAndFlush(part);
         PartResponseDto responseDto = toDto(savedPart);
 
         outboxService.saveEvent("PART", savedPart.getId().toString(), "PartUpdated", responseDto);

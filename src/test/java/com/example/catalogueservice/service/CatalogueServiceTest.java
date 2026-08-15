@@ -177,14 +177,14 @@ class CatalogueServiceTest {
         when(partRepository.findById(id)).thenReturn(Optional.of(savedPart));
         when(brandRepository.findById(brandId)).thenReturn(Optional.of(brand));
         when(categoryRepository.findById(catId)).thenReturn(Optional.of(category));
-        when(partRepository.save(any(Part.class))).thenReturn(savedPart);
+        when(partRepository.saveAndFlush(any(Part.class))).thenReturn(savedPart);
 
         PartResponseDto updated = catalogueService.updatePart(id, details);
 
         assertThat(updated.sku()).isEqualTo("SKU-NEW");
         assertThat(updated.name()).isEqualTo("New Name");
         verify(partRepository, times(1)).findById(id);
-        verify(partRepository, times(1)).save(any(Part.class));
+        verify(partRepository, times(1)).saveAndFlush(any(Part.class));
         verify(outboxService, times(1)).saveEvent(eq("PART"), anyString(), eq("PartUpdated"), any());
     }
 
@@ -210,8 +210,37 @@ class CatalogueServiceTest {
                 .hasMessageContaining("version 1")
                 .hasMessageContaining("current version is 2");
 
-        verify(partRepository, never()).save(any(Part.class));
+        verify(partRepository, never()).saveAndFlush(any(Part.class));
         verifyNoInteractions(brandRepository, categoryRepository, outboxService);
+    }
+
+    @Test
+    void shouldReturnIncrementedVersionAfterUpdatingPart() {
+        UUID id = UUID.randomUUID();
+        UUID brandId = UUID.randomUUID();
+        UUID catId = UUID.randomUUID();
+        Brand brand = new Brand(brandId, "Toyota");
+        Category category = new Category(catId, "Brakes", null);
+        Money price = new Money(15000L, Currency.USD);
+        Part existingPart = new Part(
+                id, "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null, 0L
+        );
+        PartRequestDto details = new PartRequestDto(
+                "SKU-123", "Updated Brake Pad", brandId, catId, price, PartStatus.ACTIVE, null, null, 0L
+        );
+        Part persistedPart = new Part(
+                id, "SKU-123", "Updated Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null, 1L
+        );
+
+        when(partRepository.findById(id)).thenReturn(Optional.of(existingPart));
+        when(brandRepository.findById(brandId)).thenReturn(Optional.of(brand));
+        when(categoryRepository.findById(catId)).thenReturn(Optional.of(category));
+        when(partRepository.saveAndFlush(any(Part.class))).thenReturn(persistedPart);
+
+        PartResponseDto updated = catalogueService.updatePart(id, details);
+
+        assertThat(updated.version()).isEqualTo(1L);
+        verify(partRepository).saveAndFlush(existingPart);
     }
 
     @Test
