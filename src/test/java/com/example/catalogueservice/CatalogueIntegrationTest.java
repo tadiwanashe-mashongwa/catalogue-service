@@ -5,6 +5,7 @@ import com.example.catalogueservice.repository.OutboxRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -47,6 +48,9 @@ class CatalogueIntegrationTest {
     @Autowired
     private OutboxRepository outboxRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private static final BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>();
 
     @KafkaListener(topics = "part-events", groupId = "test-group")
@@ -72,5 +76,15 @@ class CatalogueIntegrationTest {
             assertThat(consumedMessage).isNotNull();
             assertThat(consumedMessage).contains("TEST-123");
         });
+    }
+
+    @Test
+    void shouldApplyInitialSchemaThroughFlyway() {
+        Integer appliedMigrations = jdbcTemplate.queryForObject(
+                "select count(*) from flyway_schema_history where version = '1' and success = true",
+                Integer.class
+        );
+
+        assertThat(appliedMigrations).isEqualTo(1);
     }
 }
