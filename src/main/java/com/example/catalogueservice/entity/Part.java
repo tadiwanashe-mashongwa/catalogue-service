@@ -46,6 +46,29 @@ public class Part {
     @JoinColumn(name = "part_id")
     private List<PartImage> images;
 
+    @Version
+    private Long version;
+
+    public Part(UUID id, String sku, String name, Brand brand, Category category, Money price,
+                PartStatus status, List<VehicleFitment> vehicleFitments, List<PartImage> images) {
+        this(id, sku, name, brand, category, price, status, vehicleFitments, images, null);
+    }
+
+    public void rename(String name) {
+        this.name = name;
+    }
+
+    public void updateDetails(Part updatedPart) {
+        this.sku = updatedPart.sku;
+        this.name = updatedPart.name;
+        this.brand = updatedPart.brand;
+        this.category = updatedPart.category;
+        this.price = updatedPart.price;
+        this.status = updatedPart.status;
+        this.vehicleFitments = updatedPart.vehicleFitments;
+        this.images = updatedPart.images;
+    }
+
     public boolean fits(Vehicle vehicle) {
         if (vehicleFitments == null) {
             return false;

@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @DataJpaTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop"
@@ -69,5 +71,29 @@ class PartRepositoryTest {
 
         assertThat(results).isNotEmpty();
         assertThat(results.get(0).getSku()).isEqualTo("SKU-ABC");
+    }
+
+    @Test
+    void shouldRejectAStalePartUpdate() {
+        Brand brand = entityManager.persist(new Brand(UUID.randomUUID(), "Toyota"));
+        Category category = entityManager.persist(new Category(UUID.randomUUID(), "Brakes", null));
+        Part part = partRepository.saveAndFlush(new Part(
+                UUID.randomUUID(), "SKU-LOCK", "Brake Pad", brand, category,
+                new Money(15000L, Currency.USD), PartStatus.ACTIVE, List.of(), null
+        ));
+
+        entityManager.clear();
+        Part firstCopy = partRepository.findById(part.getId()).orElseThrow();
+        entityManager.detach(firstCopy);
+        entityManager.clear();
+        Part staleCopy = partRepository.findById(part.getId()).orElseThrow();
+        entityManager.detach(staleCopy);
+
+        firstCopy.rename("Updated Brake Pad");
+        partRepository.saveAndFlush(firstCopy);
+
+        staleCopy.rename("Stale Brake Pad");
+        assertThatThrownBy(() -> partRepository.saveAndFlush(staleCopy))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 }

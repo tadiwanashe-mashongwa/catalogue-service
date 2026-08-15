@@ -67,12 +67,10 @@ public class CatalogueService {
 
     @Transactional
     public PartResponseDto updatePart(UUID id, PartRequestDto requestDto) {
-        if (!partRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Part not found with id: " + id);
-        }
-
-        Part updatedPart = toEntity(requestDto, id);
-        Part savedPart = partRepository.save(updatedPart);
+        Part part = partRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Part not found with id: " + id));
+        part.updateDetails(toEntity(requestDto, id));
+        Part savedPart = partRepository.save(part);
         PartResponseDto responseDto = toDto(savedPart);
 
         outboxService.saveEvent("PART", savedPart.getId().toString(), "PartUpdated", responseDto);

@@ -66,7 +66,7 @@ class CatalogueServiceSadPathTest {
                 "SKU-123", "Brake Pad", brandId, catId, price, PartStatus.ACTIVE, null, null
         );
 
-        when(partRepository.existsById(id)).thenReturn(false);
+        when(partRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> catalogueService.updatePart(id, requestDto))
                 .isInstanceOf(ResourceNotFoundException.class)

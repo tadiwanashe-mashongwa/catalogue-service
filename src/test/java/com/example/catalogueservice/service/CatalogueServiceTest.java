@@ -158,7 +158,7 @@ class CatalogueServiceTest {
                 id, "SKU-NEW", "New Name", brand, category, price, PartStatus.ACTIVE, null, null
         );
 
-        when(partRepository.existsById(id)).thenReturn(true);
+        when(partRepository.findById(id)).thenReturn(Optional.of(savedPart));
         when(brandRepository.findById(brandId)).thenReturn(Optional.of(brand));
         when(categoryRepository.findById(catId)).thenReturn(Optional.of(category));
         when(partRepository.save(any(Part.class))).thenReturn(savedPart);
@@ -167,7 +167,7 @@ class CatalogueServiceTest {
 
         assertThat(updated.sku()).isEqualTo("SKU-NEW");
         assertThat(updated.name()).isEqualTo("New Name");
-        verify(partRepository, times(1)).existsById(id);
+        verify(partRepository, times(1)).findById(id);
         verify(partRepository, times(1)).save(any(Part.class));
         verify(outboxService, times(1)).saveEvent(eq("PART"), anyString(), eq("PartUpdated"), any());
     }
