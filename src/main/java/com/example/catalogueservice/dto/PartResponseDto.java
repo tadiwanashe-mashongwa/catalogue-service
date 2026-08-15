@@ -19,5 +19,12 @@ public record PartResponseDto(
         Money price,
         PartStatus status,
         List<VehicleFitment> vehicleFitments,
-        List<PartImage> images
-) {}
+        List<PartImage> images,
+        Long version
+) {
+    public PartResponseDto(UUID id, String sku, String name, UUID brandId, String brandName, UUID categoryId,
+                           String categoryName, Money price, PartStatus status, List<VehicleFitment> vehicleFitments,
+                           List<PartImage> images) {
+        this(id, sku, name, brandId, brandName, categoryId, categoryName, price, status, vehicleFitments, images, null);
+    }
+}

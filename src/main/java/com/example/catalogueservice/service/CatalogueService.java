@@ -6,6 +6,7 @@ import com.example.catalogueservice.entity.Brand;
 import com.example.catalogueservice.entity.Category;
 import com.example.catalogueservice.entity.Part;
 import com.example.catalogueservice.exception.ResourceNotFoundException;
+import com.example.catalogueservice.exception.StalePartVersionException;
 import com.example.catalogueservice.repository.BrandRepository;
 import com.example.catalogueservice.repository.CategoryRepository;
 import com.example.catalogueservice.repository.PartRepository;
@@ -69,6 +70,11 @@ public class CatalogueService {
     public PartResponseDto updatePart(UUID id, PartRequestDto requestDto) {
         Part part = partRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Part not found with id: " + id));
+        if (!java.util.Objects.equals(requestDto.version(), part.getVersion())) {
+            throw new StalePartVersionException(
+                    "Part version " + requestDto.version() + " is stale; current version is " + part.getVersion() + "."
+            );
+        }
         part.updateDetails(toEntity(requestDto, id));
         Part savedPart = partRepository.save(part);
         PartResponseDto responseDto = toDto(savedPart);
@@ -192,7 +198,8 @@ public class CatalogueService {
                 part.getPrice(),
                 part.getStatus(),
                 part.getVehicleFitments(),
-                part.getImages()
+                part.getImages(),
+                part.getVersion()
         );
     }
 }

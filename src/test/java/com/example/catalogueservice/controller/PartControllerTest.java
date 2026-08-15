@@ -6,6 +6,7 @@ import com.example.catalogueservice.entity.Currency;
 import com.example.catalogueservice.entity.Money;
 import com.example.catalogueservice.entity.PartStatus;
 import com.example.catalogueservice.exception.ResourceNotFoundException;
+import com.example.catalogueservice.exception.StalePartVersionException;
 import com.example.catalogueservice.service.CatalogueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -117,6 +118,27 @@ class PartControllerTest {
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.sku").value("SKU-2"));
+    }
+
+    @Test
+    void shouldReturnConflictWhenUpdatingPartWithStaleVersion() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID brandId = UUID.randomUUID();
+        UUID catId = UUID.randomUUID();
+        Money price = new Money(20000L, Currency.USD);
+        PartRequestDto requestDto = new PartRequestDto(
+                "SKU-2", "Updated", brandId, catId, price, PartStatus.ACTIVE, null, null, 1L
+        );
+
+        when(catalogueService.updatePart(eq(id), any(PartRequestDto.class)))
+                .thenThrow(new StalePartVersionException("Part version 1 is stale; current version is 2."));
+
+        mockMvc.perform(put("/api/parts/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Part version 1 is stale; current version is 2."));
     }
 
     @Test

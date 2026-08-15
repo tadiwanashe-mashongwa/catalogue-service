@@ -4,6 +4,7 @@ import com.example.catalogueservice.dto.PartRequestDto;
 import com.example.catalogueservice.dto.PartResponseDto;
 import com.example.catalogueservice.entity.*;
 import com.example.catalogueservice.exception.ResourceNotFoundException;
+import com.example.catalogueservice.exception.StalePartVersionException;
 import com.example.catalogueservice.repository.BrandRepository;
 import com.example.catalogueservice.repository.CategoryRepository;
 import com.example.catalogueservice.repository.PartRepository;
@@ -90,6 +91,21 @@ class CatalogueServiceTest {
     }
 
     @Test
+    void shouldExposePartVersionWhenReturningPart() {
+        UUID partId = UUID.randomUUID();
+        Brand brand = new Brand(UUID.randomUUID(), "Toyota");
+        Category category = new Category(UUID.randomUUID(), "Brakes", null);
+        Money price = new Money(15000L, Currency.USD);
+        Part part = new Part(partId, "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null, 3L);
+
+        when(partRepository.findById(partId)).thenReturn(Optional.of(part));
+
+        PartResponseDto responseDto = catalogueService.findPartById(partId);
+
+        assertThat(responseDto.version()).isEqualTo(3L);
+    }
+
+    @Test
     void shouldReturnPartsForGivenVehicle() {
         String make = "Toyota";
         String model = "Hilux";
@@ -170,6 +186,32 @@ class CatalogueServiceTest {
         verify(partRepository, times(1)).findById(id);
         verify(partRepository, times(1)).save(any(Part.class));
         verify(outboxService, times(1)).saveEvent(eq("PART"), anyString(), eq("PartUpdated"), any());
+    }
+
+    @Test
+    void shouldRejectUpdateWhenRequestVersionIsStale() {
+        UUID id = UUID.randomUUID();
+        UUID brandId = UUID.randomUUID();
+        UUID catId = UUID.randomUUID();
+        Brand brand = new Brand(brandId, "Toyota");
+        Category category = new Category(catId, "Brakes", null);
+        Money price = new Money(15000L, Currency.USD);
+        Part existingPart = new Part(
+                id, "SKU-123", "Brake Pad", brand, category, price, PartStatus.ACTIVE, null, null, 2L
+        );
+        PartRequestDto staleDetails = new PartRequestDto(
+                "SKU-NEW", "New Name", brandId, catId, price, PartStatus.ACTIVE, null, null, 1L
+        );
+
+        when(partRepository.findById(id)).thenReturn(Optional.of(existingPart));
+
+        assertThatThrownBy(() -> catalogueService.updatePart(id, staleDetails))
+                .isInstanceOf(StalePartVersionException.class)
+                .hasMessageContaining("version 1")
+                .hasMessageContaining("current version is 2");
+
+        verify(partRepository, never()).save(any(Part.class));
+        verifyNoInteractions(brandRepository, categoryRepository, outboxService);
     }
 
     @Test

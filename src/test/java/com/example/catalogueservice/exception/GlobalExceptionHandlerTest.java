@@ -62,6 +62,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void shouldHandleStalePartVersionException() throws Exception {
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(new TestController() {
+                    @Override
+                    public void throwNotFound() {
+                        throw new StalePartVersionException("Part version 1 is stale; current version is 2.");
+                    }
+                })
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+
+        mockMvc.perform(get("/test-not-found"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Part version 1 is stale; current version is 2."));
+    }
+
+    @Test
     void shouldHandleDataIntegrityViolationException() throws Exception {
         mockMvc.perform(get("/test-data-integrity"))
                 .andExpect(status().isBadRequest())

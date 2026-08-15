@@ -18,5 +18,11 @@ public record PartRequestDto(
         @NotNull Money price,
         @NotNull PartStatus status,
         List<VehicleFitment> vehicleFitments,
-        List<PartImage> images
-) {}
+        List<PartImage> images,
+        Long version
+) {
+    public PartRequestDto(String sku, String name, UUID brandId, UUID categoryId, Money price,
+                          PartStatus status, List<VehicleFitment> vehicleFitments, List<PartImage> images) {
+        this(sku, name, brandId, categoryId, price, status, vehicleFitments, images, null);
+    }
+}
