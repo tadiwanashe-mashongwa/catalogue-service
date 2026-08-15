@@ -2,6 +2,7 @@ package com.example.catalogueservice;
 
 import com.example.catalogueservice.entity.OutboxEvent;
 import com.example.catalogueservice.repository.OutboxRepository;
+import com.example.catalogueservice.scheduler.OutboxPoller;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,7 +25,10 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.kafka.consumer.auto-offset-reset=earliest",
+        "spring.task.scheduling.enabled=false"
+})
 @Testcontainers
 class CatalogueIntegrationTest {
 
@@ -51,6 +55,9 @@ class CatalogueIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private OutboxPoller outboxPoller;
+
     private static final BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>();
 
     @KafkaListener(topics = "part-events", groupId = "test-group")
@@ -70,6 +77,7 @@ class CatalogueIntegrationTest {
                 OutboxEvent.EventStatus.PENDING
         );
         outboxRepository.save(event);
+        outboxPoller.pollAndPublishEvents();
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
             String consumedMessage = messageQueue.poll(1, TimeUnit.SECONDS);
