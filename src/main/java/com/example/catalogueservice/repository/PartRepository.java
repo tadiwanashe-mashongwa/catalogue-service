@@ -23,9 +23,8 @@ public interface PartRepository extends JpaRepository<Part, UUID> {
 
     @Query("""
             SELECT p FROM Part p
-            WHERE (:status IS NULL OR p.status = :status)
-              AND (:keyword IS NULL
-                   OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            WHERE p.status = :status
+              AND (LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%')))
             """)
     Page<Part> findByStatusAndKeyword(
@@ -33,4 +32,9 @@ public interface PartRepository extends JpaRepository<Part, UUID> {
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    Page<Part> findByStatus(PartStatus status, Pageable pageable);
+
+    @Query("SELECT p FROM Part p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Part> searchParts(@Param("keyword") String keyword, Pageable pageable);
 }

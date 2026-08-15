@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Optional;
@@ -156,6 +158,23 @@ class CatalogueServiceTest {
 
         assertThat(actualParts).hasSize(1);
         verify(partRepository, times(1)).findAll();
+    }
+
+    @Test
+    void shouldUsePlainPagedQueryWhenNoPartFiltersAreSupplied() {
+        Brand brand = new Brand(UUID.randomUUID(), "Toyota");
+        Category category = new Category(UUID.randomUUID(), "Brakes", null);
+        Part part = new Part(UUID.randomUUID(), "SKU-123", "Brake Pad", brand, category,
+                new Money(15000L, Currency.USD), PartStatus.ACTIVE, null, null);
+        PageRequest pageable = PageRequest.of(0, 20);
+
+        when(partRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(part), pageable, 1));
+
+        var response = catalogueService.getParts(0, 20, null, null);
+
+        assertThat(response.totalElements()).isEqualTo(1);
+        verify(partRepository).findAll(pageable);
+        verifyNoMoreInteractions(partRepository);
     }
 
     @Test

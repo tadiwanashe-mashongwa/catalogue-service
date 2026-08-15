@@ -73,7 +73,17 @@ public class CatalogueService {
     @Transactional(readOnly = true)
     public PagedResponse<PartResponseDto> getParts(int page, int size, PartStatus status, String keyword) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        Page<Part> parts = partRepository.findByStatusAndKeyword(status, normalizedKeyword, PageRequest.of(page, size));
+        PageRequest pageable = PageRequest.of(page, size);
+        Page<Part> parts;
+        if (status != null && normalizedKeyword != null) {
+            parts = partRepository.findByStatusAndKeyword(status, normalizedKeyword, pageable);
+        } else if (status != null) {
+            parts = partRepository.findByStatus(status, pageable);
+        } else if (normalizedKeyword != null) {
+            parts = partRepository.searchParts(normalizedKeyword, pageable);
+        } else {
+            parts = partRepository.findAll(pageable);
+        }
 
         return new PagedResponse<>(
                 parts.getContent().stream().map(this::toDto).toList(),
