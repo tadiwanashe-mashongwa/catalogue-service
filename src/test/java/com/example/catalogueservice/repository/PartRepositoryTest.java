@@ -96,4 +96,36 @@ class PartRepositoryTest {
         assertThatThrownBy(() -> partRepository.saveAndFlush(staleCopy))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
+
+    @Test
+    void shouldUpdatePartCollectionsWithoutReplacingOrphanRemovalReferences() {
+        Brand brand = entityManager.persist(new Brand(UUID.randomUUID(), "Toyota"));
+        Category category = entityManager.persist(new Category(UUID.randomUUID(), "Brakes", null));
+        Part part = partRepository.saveAndFlush(new Part(
+                UUID.randomUUID(), "SKU-COLLECTIONS", "Brake Pad", brand, category,
+                new Money(15000L, Currency.USD), PartStatus.ACTIVE,
+                List.of(new VehicleFitment(UUID.randomUUID(), "Toyota", "Hilux", 2005, 2011)),
+                List.of(new PartImage(UUID.randomUUID(), "https://example.com/original.jpg", UUID.randomUUID()))
+        ));
+
+        entityManager.clear();
+        Part managedPart = partRepository.findById(part.getId()).orElseThrow();
+        Part updatedPart = new Part(
+                part.getId(), "SKU-COLLECTIONS", "Updated Brake Pad", brand, category,
+                new Money(16000L, Currency.USD), PartStatus.ACTIVE,
+                List.of(new VehicleFitment(UUID.randomUUID(), "Toyota", "Hilux", 2012, 2016)),
+                List.of(new PartImage(UUID.randomUUID(), "https://example.com/updated.jpg", UUID.randomUUID()))
+        );
+
+        managedPart.updateDetails(updatedPart);
+        partRepository.saveAndFlush(managedPart);
+
+        entityManager.clear();
+        Part reloadedPart = partRepository.findById(part.getId()).orElseThrow();
+        assertThat(reloadedPart.getName()).isEqualTo("Updated Brake Pad");
+        assertThat(reloadedPart.getVehicleFitments()).hasSize(1);
+        assertThat(reloadedPart.getVehicleFitments().get(0).getYearFrom()).isEqualTo(2012);
+        assertThat(reloadedPart.getImages()).hasSize(1);
+        assertThat(reloadedPart.getImages().get(0).getUrl()).isEqualTo("https://example.com/updated.jpg");
+    }
 }

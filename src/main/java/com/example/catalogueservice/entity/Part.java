@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,7 +52,15 @@ public class Part {
 
     public Part(UUID id, String sku, String name, Brand brand, Category category, Money price,
                 PartStatus status, List<VehicleFitment> vehicleFitments, List<PartImage> images) {
-        this(id, sku, name, brand, category, price, status, vehicleFitments, images, null);
+        this.id = id;
+        this.sku = sku;
+        this.name = name;
+        this.brand = brand;
+        this.category = category;
+        this.price = price;
+        this.status = status;
+        this.vehicleFitments = vehicleFitments == null ? new ArrayList<>() : new ArrayList<>(vehicleFitments);
+        this.images = images == null ? new ArrayList<>() : new ArrayList<>(images);
     }
 
     public void rename(String name) {
@@ -65,8 +74,30 @@ public class Part {
         this.category = updatedPart.category;
         this.price = updatedPart.price;
         this.status = updatedPart.status;
-        this.vehicleFitments = updatedPart.vehicleFitments;
-        this.images = updatedPart.images;
+        replaceVehicleFitments(updatedPart.vehicleFitments);
+        replaceImages(updatedPart.images);
+    }
+
+    private void replaceVehicleFitments(List<VehicleFitment> updatedVehicleFitments) {
+        if (vehicleFitments == null) {
+            vehicleFitments = new ArrayList<>();
+        } else {
+            vehicleFitments.clear();
+        }
+        if (updatedVehicleFitments != null) {
+            vehicleFitments.addAll(updatedVehicleFitments);
+        }
+    }
+
+    private void replaceImages(List<PartImage> updatedImages) {
+        if (images == null) {
+            images = new ArrayList<>();
+        } else {
+            images.clear();
+        }
+        if (updatedImages != null) {
+            images.addAll(updatedImages);
+        }
     }
 
     public boolean fits(Vehicle vehicle) {
